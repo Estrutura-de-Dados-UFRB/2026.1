@@ -1,0 +1,18 @@
+# Saídas de compilação Java
+bin/
+.class/
+target/
+*.class
+
+# Arquivos temporários de build e logs
+sources.txt
+*.log
+*.tmp
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Metadados internos de agentes locais
+.agents/
+.codex/
