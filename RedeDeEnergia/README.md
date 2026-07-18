@@ -10,13 +10,16 @@
 
 Aplicação Java/Swing para montar, visualizar e analisar uma rede de distribuição de energia sobre um mapa. A topologia é representada por um **grafo não direcionado e ponderado**: vértices representam elementos da rede e arestas representam cabos. O peso (`lambda`) de uma aresta é a distância geográfica aproximada entre os dois pontos, em metros.
 
-Além do grafo, cada vértice também é a raiz de uma árvore binária que pode guardar casas vinculadas àquele poste. Essa estrutura permite simular tanto problemas na malha elétrica quanto falhas locais de atendimento.
+Além do grafo, cada vértice também é a raiz de uma árvore binária que pode guardar casas vinculadas àquele poste. Essa estrutura permite simular tanto problemas na malha elétrica quanto falhas locais de atendimento. A interface monitora a rede continuamente: pontos de articulação são recalculados e destacados a cada mudança, falhas críticas disparam um alerta lateral piscante, e um relatório completo (com localização real de cada falha, via geocodificação reversa) pode ser gerado, atualizado e salvo em arquivo a qualquer momento.
+
+## Diagrama de classes
 
 > O diagrama de classes do projeto está em [diagrama_classes.puml](diagrama_classes.puml).
 
 ## Sumário
 
 - [Requisitos e execução](#requisitos-e-execução)
+- [Diagrama de classes](#diagrama-de-classes)
 - [Modelo da rede](#modelo-da-rede)
 - [Como usar o simulador](#como-usar-o-simulador)
 - [Algoritmos implementados](#algoritmos-implementados)
@@ -39,7 +42,7 @@ javac -encoding UTF-8 -cp "lib/*" -d out (Get-ChildItem -Recurse -Filter *.java 
 java -cp "out;lib/*" App
 ```
 
-O mapa usa blocos do OpenStreetMap, portanto a visualização completa depende de acesso à internet. A lógica do grafo e os algoritmos continuam independentes do mapa.
+O mapa usa blocos do OpenStreetMap, e o relatório completo consulta o serviço de geocodificação reversa Nominatim (também OpenStreetMap) para identificar a cidade/bairro de cada falha; portanto a visualização completa e os relatórios dependem de acesso à internet. A lógica do grafo e os algoritmos continuam independentes do mapa e funcionam normalmente offline (o relatório apenas mostra "Localização não identificada" quando a consulta falha).
 
 ## Modelo da rede
 
@@ -62,6 +65,8 @@ Na interface, todos os tipos visuais (subestação, poste e casa) são adicionad
 | --- | --- |
 | **Arquivo** | Abre opções para salvar a topologia, carregar um arquivo `.txt` ou limpar toda a rede. |
 | **Testes** | Executa o cenário automático pronto ou abre o teste personalizado da rede desenhada. |
+| **Painel de Testes** | Atalho direto para o mesmo painel de testes livres sobre a rede desenhada (equivalente a **Testes ▶ Testar Rede Desenhada**). |
+| **Relatório** | Abre a janela **Relatório da Rede**, com resumo geral, impacto atual e prioridades de manutenção; pode ser atualizada e salva em `.txt`. |
 | **Navegar** | Volta ao modo de navegação do mapa: arrastar move o mapa e a roda do mouse altera o zoom. |
 | **Add: Poste** | Abre a escolha entre **Poste**, **Casa** e **Subestação**. Depois, clique no mapa para inserir o elemento escolhido. |
 | **Auto-Conectar** | Quando ativo, o novo vértice é conectado ao último vértice inserido. Clicar em um vértice existente também pode continuar a cadeia a partir dele. |
@@ -105,6 +110,24 @@ Na interface, todos os tipos visuais (subestação, poste e casa) são adicionad
 - **Diagnóstico: Arestas Duplicadas**: imprime o resultado no console da IDE.
 - **Limpar Destaques**: remove marcações de algoritmos e retorna à visão normal.
 
+### Relatório da Rede
+
+O botão **Relatório** (ou o alerta lateral, veja abaixo) abre uma janela própria, independente do painel de testes, com o relatório completo da rede:
+
+1. **Resumo geral**: total de componentes, total de conexões, componentes em falha e componentes sem energia por efeito cascata.
+2. **Pontos prioritários para manutenção**: mesmo conteúdo do relatório de impacto do painel de testes — falhas agrupadas por região real (cidade/bairro obtido por geocodificação reversa, com fallback "Localização não identificada"), pontos críticos, ranking de fragilidade por grau e cabos afetados mais longos.
+
+Botões **🔄 Atualizar** e **💾 Salvar em Arquivo...** (grava um `.txt`) ficam na parte inferior da janela. Como a geração consulta o serviço de geocodificação pela rede, o relatório é montado em uma thread separada (`SwingWorker`) para não travar a interface enquanto aguarda a resposta.
+
+### Alerta lateral de falha crítica
+
+Sempre que uma falha manual (clique no mapa ou nos painéis de teste) tem impacto em cascata sobre outros componentes, ou quando uma subestação cai, um ícone piscante aparece na lateral direita da janela principal, acompanhado de um beep:
+
+- **⚠ (laranja)**: falha crítica comum — outros pontos da rede perderam energia por consequência.
+- **⛔ (vermelho)**: falha em subestação — uma região inteira pode ter ficado sem energia.
+
+Clicar no ícone apaga o alerta e abre a janela **Relatório da Rede**. Se o relatório já estiver aberto, o ícone não acende: o conteúdo da janela é apenas atualizado.
+
 ### Cores e animações do mapa
 
 - Roxo: subestação.
@@ -115,8 +138,9 @@ Na interface, todos os tipos visuais (subestação, poste e casa) são adicionad
 - Vermelho tracejado e raio: falha ou área sem energia. O raio pulsa mais forte (maior opacidade e escala) quando o cabo toca diretamente um vértice inativo, e mais fraco quando está apenas sem energia por estar a jusante de uma falha.
 - Anel colorido ao redor do vértice/cabo: destaque do último algoritmo executado (verde para AGM, laranja para Pontes); a busca (BFS/DFS) também numera a ordem de visita com uma etiqueta `#1`, `#2`, etc.
 - Anel ciano: vértice selecionado manualmente (ex.: origem já escolhida no modo "Ligar Vértices").
+- Anel laranja pulsante com um `⚠` acima do vértice: poste ativo que é **ponto de articulação** no estado atual da rede (ver [Algoritmos implementados](#algoritmos-implementados)). Recalculado automaticamente a cada mudança na rede, sem precisar de nenhum comando; subestações nunca recebem esse destaque, pois já têm alerta próprio (veja [Alerta lateral de falha crítica](#alerta-lateral-de-falha-crítica)).
 
-A **Legenda** (canto inferior direito, alternável pelo botão **Legenda**) não é estática: ela recalcula e mostra, em tempo real, a contagem de cada item — número de subestações, postes, casas, cabos, elementos com energia, elementos em falha, elementos destacados por algum algoritmo e quantos vértices têm numeração de busca (BFS/DFS) no momento.
+A **Legenda** (canto inferior direito, alternável pelo botão **Legenda**) não é estática: ela recalcula e mostra, em tempo real, a contagem de cada item — número de subestações, postes, casas, cabos, elementos com energia, elementos em falha, elementos destacados por algum algoritmo, quantos vértices têm numeração de busca (BFS/DFS) no momento e quantos pontos críticos (risco de isolar trechos) existem.
 
 ## Algoritmos implementados
 
@@ -128,12 +152,13 @@ A **Legenda** (canto inferior direito, alternável pelo botão **Legenda**) não
 | Caminho alternativo | `CaminhoAlternativo` | Dijkstra sem fila de prioridade. | Menor caminho ponderado entre origem e destino, ou lista vazia. | `O(V² + E)` |
 | Fluxo máximo | `FluxoMaximo` | Edmonds-Karp (Ford-Fulkerson com BFS) em rede residual. | Capacidade máxima entre origem e destino. | `O(VE²)` |
 | Pontes | `Pontes` | DFS de Tarjan com tempos `disc` e valores `low`. | Cabos cuja remoção aumenta o número de componentes. | `O(V + E)` |
+| Pontos de articulação | `PontosArticulacao` | Mesmo DFS de Tarjan (`disc`/`low`), aplicado a vértices em vez de arestas. | Postes ativos cuja queda fragmentaria a rede ativa. | `O(V + E)` |
 | AGM | `AGM` | Kruskal, ordenação por peso e Union-Find. | Arestas da árvore/floresta geradora mínima. | `O(E log E)` |
 | Pontos prioritários | `PontosPrioritarios` | Combina pontes, grau de conexão e comprimento. | Rankings para manutenção preventiva. | depende da consulta; ordenações em `O(E log E)` |
 
 ### Regras comuns aos algoritmos
 
-`BFS`, `DFS`, `AreasAfetadas`, `CaminhoAlternativo`, `FluxoMaximo` e `Pontes` constroem sua própria lista de adjacência a partir das arestas ativas e ignoram vértices inativos. O grafo é tratado como não direcionado.
+`BFS`, `DFS`, `AreasAfetadas`, `CaminhoAlternativo`, `FluxoMaximo`, `Pontes` e `PontosArticulacao` constroem sua própria lista de adjacência a partir das arestas ativas e ignoram vértices inativos. O grafo é tratado como não direcionado.
 
 #### BFS e DFS
 
@@ -154,6 +179,10 @@ Cada cabo não direcionado gera capacidade residual nos dois sentidos, ambas igu
 #### Pontes
 
 Uma ponte não possui rota alternativa: se o cabo for removido, a rede ativa se fragmenta. A implementação impede a adição de cabos duplicados, importante porque arestas paralelas alterariam a interpretação de ponte.
+
+#### Pontos de articulação
+
+Um ponto de articulação é um poste ativo cuja queda, por si só, divide a rede ativa em mais componentes — mesmo sem nenhum cabo ter sido rompido. Assim como em Pontes, a raiz da busca só é articulação se tiver mais de um filho na árvore de DFS; os demais vértices são articulação quando nenhuma aresta de retorno da subárvore de um filho ultrapassa o próprio vértice (`low(filho) >= disc(vértice)`). Diferente dos demais algoritmos, este não tem item no menu **Algoritmos**: `VisualizadorRede.recalcularEnergia()` o executa automaticamente a cada mudança na rede (inserção, remoção, falha) e repassa o resultado a `PintorConexoes.setPontosCriticos(...)` para o destaque visual sempre ficar atualizado. Subestações são removidas do resultado antes do destaque, pois sua queda já tem alerta e tratamento visual próprios.
 
 #### AGM — Árvore Geradora Mínima
 
@@ -187,6 +216,7 @@ Kruskal ordena os cabos por `lambda` crescente e adiciona um cabo apenas se ele 
 | `CaminhoAlternativo<TIPO>` | `executar(origem, destino)`: devolve o menor caminho ativo pelo peso. |
 | `FluxoMaximo<TIPO>` | `executar(origem, destino)`: devolve a capacidade máxima. |
 | `Pontes<TIPO>` | `executar()`: devolve as conexões críticas da topologia ativa. |
+| `PontosArticulacao<TIPO>` | `executar()`: devolve os postes ativos que são pontos de articulação da rede ativa. |
 | `AGM<TIPO>` | `executar(vertices, arestas)`: devolve as arestas selecionadas por Kruskal. |
 | `PontosPrioritarios<TIPO>` | `pontesCriticas`, `postesMaisFragilizados(topN)` e `cabosMaisLongos(topN)`: produz indicadores para manutenção. |
 
@@ -194,21 +224,25 @@ Kruskal ordena os cabos por `lambda` crescente e adiciona um cabo apenas se ele 
 
 | Classe | Responsabilidade |
 | --- | --- |
-| `VisualizadorRede` | Janela principal. Configura mapa, barra de ferramentas, interação por cliques, persistência, recálculo visual de energia e execução dos algoritmos disponíveis na interface. |
-| `PintorConexoes` | Implementa `Painter<JXMapViewer>`. Guarda os dados visuais (`VerticeVis` e `ConexaoVis`), desenha nós/cabos/legenda, anima a energia e registra destaques, falhas e ordem de visita. |
+| `VisualizadorRede` | Janela principal. Configura mapa, barra de ferramentas, interação por cliques, persistência, recálculo visual de energia (incluindo o recálculo automático de pontos de articulação), o alerta lateral piscante de falha crítica (`ativarAlertaCritico`/`ativarAlertaDeSubestacao`/`desativarAlertaCritico`) e execução dos algoritmos disponíveis na interface. |
+| `PintorConexoes` | Implementa `Painter<JXMapViewer>`. Guarda os dados visuais (`VerticeVis` e `ConexaoVis`), desenha nós/cabos/legenda, anima a energia e registra destaques, falhas, ordem de visita e pontos críticos (`setPontosCriticos`). |
 | `PintorConexoes.VerticeVis` | Estrutura visual pública com nome, posição geográfica e tipo do elemento. |
 | `PintorConexoes.ConexaoVis` | Estrutura interna com origem, destino e peso exibido para uma conexão. |
-| `GerenciadorTestes` | Controla as duas janelas de teste: o roteiro de 4 etapas do cenário automático (`iniciarTesteAutomatico`/`renderizarEstadoAtual`) e o painel de testes livres sobre a rede desenhada (`executarTestePersonalizado`), incluindo estresse aleatório, religar/derrubar por seleção, cálculo de rota (manual e automática) e a montagem do relatório de impacto (`gerarRelatorioDeFalha`: pontos críticos via contagem de componentes, ranking de fragilidade por grau, cabos mais longos afetados). Também sincroniza falhas aplicadas por clique direto no mapa (`registrarFalhaManualNoMapa`). Usa um interceptador de `System.out` (`capturarSaidaConsole`) para reaproveitar os métodos de impressão do `Grafo` dentro da interface gráfica. |
+| `GeocodificadorReverso` | Descobre cidade e bairro de uma coordenada via geocodificação reversa (Nominatim/OpenStreetMap), para os relatórios apontarem a localização real de cada falha em vez da subestação mais próxima. Resultado por coordenada fica em cache em memória; qualquer falha de rede cai de volta em "Localização não identificada" sem travar o relatório. |
+| `GerenciadorTestes` | Controla as janelas de teste e de relatório: o roteiro de 4 etapas do cenário automático (`iniciarTesteAutomatico`/`renderizarEstadoAtual`), o painel de testes livres sobre a rede desenhada (`executarTestePersonalizado`), incluindo estresse aleatório, religar/derrubar por seleção, cálculo de rota (manual e automática) e a montagem do relatório de impacto (`gerarRelatorioDeFalha`/`gerarSecoesImpacto`: falhas agrupadas por região real via `GeocodificadorReverso`, pontos críticos via contagem de componentes, ranking de fragilidade por grau, cabos mais longos afetados); e a janela **Relatório da Rede** (`abrirRelatorioCompleto`/`gerarRelatorioCompleto`), gerada em segundo plano (`gerarEmSegundoPlano`, via `SwingWorker`) por depender da consulta de geocodificação. Detecta falha crítica (`ehFalhaCritica`) e falha de subestação para acionar o alerta lateral (`sinalizarFalhaCritica`/`sinalizarFalhaDeSubestacao`) com um beep. Também sincroniza falhas aplicadas por clique direto no mapa (`registrarFalhaManualNoMapa`). Usa um interceptador de `System.out` (`capturarSaidaConsole`) para reaproveitar os métodos de impressão do `Grafo` dentro da interface gráfica. |
 | `ModeloTesteAutomatico` | Classe utilitária (métodos estáticos) que monta a rede fixa usada pelo cenário automático: 4 subestações (`Sub_Centro`, `Sub_Coplan`, `Sub_UFRB`, `Sub_Inocoop`) formando um anel de transmissão, ligadas a postes e casas distribuídos por bairros de Cruz das Almas, e recentraliza o mapa nessa região. |
 
 ### Métodos importantes da visualização
 
-- `VisualizadorRede.recalcularEnergia()`: executa uma BFS multi-origem a partir de todas as subestações visuais ativas; atualiza os elementos atendidos, sem energia e com falha manual.
+- `VisualizadorRede.recalcularEnergia()`: executa uma BFS multi-origem a partir de todas as subestações visuais ativas; atualiza os elementos atendidos, sem energia e com falha manual, e recalcula os pontos de articulação atuais.
 - `VisualizadorRede.calcularDistancia(...)`: aplica Haversine para estimar a distância geográfica usada como peso do cabo.
+- `VisualizadorRede.ativarAlertaCritico(...)` / `ativarAlertaDeSubestacao(...)` / `desativarAlertaCritico()`: controlam o ícone piscante lateral de falha crítica e a ação executada ao clicar nele.
 - `PintorConexoes.adicionarVertice`, `adicionarAresta` e `removerVertice`: mantêm o espelho visual da topologia.
 - `PintorConexoes.setEstadoEnergia(...)`: recebe o estado calculado pela janela para renderizar cores, raios e animações.
 - `PintorConexoes.destacarAresta`, `destacarVertice` e `definirOrdemVisita`: armazenam os resultados de algoritmos a serem exibidos.
+- `PintorConexoes.setPontosCriticos(...)`: recebe o conjunto de pontos de articulação atuais para o anel pulsante de alerta.
 - `GerenciadorTestes.registrarFalhaManualNoMapa(...)`: sincroniza uma falha aplicada por clique com a janela de teste personalizado.
+- `GerenciadorTestes.abrirRelatorioCompleto()` / `gerarRelatorioCompleto()`: abrem e montam a janela **Relatório da Rede**.
 
 ## API da classe `Grafo`
 
@@ -238,6 +272,7 @@ Kruskal ordena os cabos por `lambda` crescente e adiciona um cabo apenas se ele 
 | Análise | `caminhoAlternativo(origem, destino)` | Retorna a rota ativa de menor distância. |
 | Análise | `fluxoMaximo(origem, destino)` | Retorna a capacidade máxima da rede ativa. |
 | Análise | `encontrarPontes()` | Retorna os cabos críticos da topologia ativa. |
+| Análise | `encontrarPontosArticulacao()` | Retorna os postes ativos cuja queda, agora, fragmentaria a rede ativa. |
 | Análise | `AGM(grafoOriginal)` | Cria e devolve um novo grafo com a árvore/floresta geradora mínima. |
 | Análise | `printPontosPrioritarios()` | Imprime pontes, postes de menor grau e cabos mais longos. |
 | Simulação | `simularQuedaSubestacao(id)` | Desativa a subestação indicada e imprime áreas afetadas. |
@@ -281,3 +316,5 @@ Esta seção registra pontos relevantes identificados na revisão do código atu
 - A fonte usada pelo backend (`fontePrincipal`) é o primeiro vértice inserido; já o recálculo visual usa todas as subestações visuais ativas. Em uma evolução do domínio, convém unificar essas duas regras.
 - `HashMap` não garante ordem de iteração. Por isso, a ordem entre vizinhos equivalentes em BFS, DFS, AGM e relatórios pode mudar.
 - Para maior precisão de domínio, recomenda-se separar `distanciaMetros` e `capacidade` na `Aresta`, evitando reutilizar `lambda` para objetivos diferentes.
+- O cache de `GeocodificadorReverso` é apenas em memória (por coordenada, arredondada a 4 casas decimais) e é perdido ao reiniciar o simulador; não há limitação de taxa de chamadas implementada, então relatórios muito frequentes sobre redes grandes podem gerar várias requisições ao Nominatim em pouco tempo.
+- O alerta lateral de falha crítica é reativo a eventos de falha manual (clique no mapa ou nos painéis de teste); ele não é reavaliado, por exemplo, ao carregar uma rede salva que já contenha falhas.
