@@ -34,10 +34,9 @@ Prim (MST) | Geração do Mapa e Análise de Rede. | Cria a estrutura da cidade,
 
 **Clima Dinâmico**: O sistema permite bloquear instantaneamente uma rota ativa (simulando tempestades ou acidentes).
 
-## Autoria
+## Autores
 
-Diego Vinicius Silva Moreira
-Mateus Cardoso Rocha
-Murilo Ruan Santos Santa Rosa
-Rafael Da Silva de Oliveira
-
+Diego Vinicius Silva Moreira \
+Mateus Cardoso Rocha \
+Murilo Ruan Santos Santa Rosa \
+Rafael Da Silva de Oliveira 
