@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Executar Main",
+            "request": "launch",
+            "mainClass": "Main",
+            "console": "integratedTerminal",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/lib/jxmapviewer2-2.8.jar",
+                "${workspaceFolder}/lib/commons-logging-1.3.0.jar"
+            ]
+        }
+    ]
+}
