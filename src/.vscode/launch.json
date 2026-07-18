@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Domino GUI",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "Main",
+      "preLaunchTask": "Build Domino Project"
+    }
+  ]
+}
