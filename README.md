@@ -11,7 +11,7 @@ O sistema é uma simulação visual interativa desenvolvida em Java (Swing) que 
 
 ## Capturas de Tela
 
-<img src="screenshot/img.png" width="200"/> 
+<img src="screenshot/img.png"/> 
 
 ## Algoritmos Implementados
 
@@ -33,3 +33,11 @@ Prim (MST) | Geração do Mapa e Análise de Rede. | Cria a estrutura da cidade,
 **Margem de Segurança de Bateria**: Ele só decola se a bateria for suficiente para cobrir o trajeto com uma margem de segurança de 20%;
 
 **Clima Dinâmico**: O sistema permite bloquear instantaneamente uma rota ativa (simulando tempestades ou acidentes).
+
+## Autoria
+
+Diego Vinicius Silva Moreira
+Mateus Cardoso Rocha
+Murilo Ruan Santos Santa Rosa
+Rafael Da Silva de Oliveira
+
