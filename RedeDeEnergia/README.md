@@ -1,5 +1,13 @@
 # Simulador de Rede de Energia Elétrica
 
+## Discentes
+
+- Isaías Cefas da Silva Melo 
+- Janine dos Santos Carvalho
+- Larissa da Fonseca Conceição 
+- Marcus Vínicius Araujo dos Santos 
+- Raphael Batista dos Santos
+
 Aplicação Java/Swing para montar, visualizar e analisar uma rede de distribuição de energia sobre um mapa. A topologia é representada por um **grafo não direcionado e ponderado**: vértices representam elementos da rede e arestas representam cabos. O peso (`lambda`) de uma aresta é a distância geográfica aproximada entre os dois pontos, em metros.
 
 Além do grafo, cada vértice também é a raiz de uma árvore binária que pode guardar casas vinculadas àquele poste. Essa estrutura permite simular tanto problemas na malha elétrica quanto falhas locais de atendimento.
