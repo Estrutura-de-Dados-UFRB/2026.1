@@ -1,0 +1,33 @@
+# Cenario urbano - Sistema de Coleta de Lixo
+# V;NomeDoPonto
+# A;Rua;Inicio;Fim;distancia;volumeLixo;maoDupla(s/n)
+
+V;Deposito
+V;Centro
+V;Praca
+V;BairroNorte
+V;BairroSul
+V;Feira
+V;Escola
+V;Aterro
+
+A;Av. Principal;Deposito;Centro;4.0;2.0;n
+A;Av. Principal;Centro;Deposito;4.0;2.0;n
+A;Rua das Flores;Centro;Praca;2.0;3.0;n
+A;Rua das Flores;Praca;Centro;2.0;3.0;n
+A;Av. Norte;Centro;BairroNorte;5.0;4.0;n
+A;Av. Norte;BairroNorte;Centro;5.0;4.0;n
+A;Rua do Comercio;Praca;Feira;3.0;8.0;n
+A;Rua do Comercio;Feira;Praca;3.0;8.0;n
+A;Travessa Escolar;Praca;Escola;1.5;1.0;n
+A;Travessa Escolar;Escola;Praca;1.5;1.0;n
+A;Rua da Feira;Feira;BairroSul;2.5;6.0;n
+A;Rua da Feira;BairroSul;Feira;2.5;6.0;n
+A;Av. Sul;Centro;BairroSul;6.0;1.5;n
+A;Av. Sul;BairroSul;Centro;6.0;1.5;n
+A;Estrada Velha;BairroNorte;Aterro;8.0;0.5;n
+A;Estrada Velha;Aterro;BairroNorte;8.0;0.5;n
+A;Rodovia do Lixo;BairroSul;Aterro;7.0;5.0;n
+A;Rodovia do Lixo;Aterro;BairroSul;7.0;5.0;n
+A;Contorno Leste;BairroNorte;Escola;4.5;2.0;n
+A;Contorno Leste;Escola;BairroNorte;4.5;2.0;n
