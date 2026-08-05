@@ -1,128 +1,211 @@
-# SAMU — Mapeamento de Rotas de Ambulâncias
-### Overview do projeto para apresentação / onboarding
+# SAMU - Mapeamento de Rotas de Ambulancias
 
----
+Sistema academico em Java que simula o despacho de ambulancias do SAMU usando teoria de grafos. A cidade e representada como um grafo dirigido e ponderado: hospitais, bases do SAMU, bairros, cruzamentos e pacientes sao vertices; ruas e avenidas sao arestas com peso em minutos.
 
-## 1. O que é o projeto
+O projeto esta completo e possui backend de grafo, algoritmos de busca, regras de negocio, interface grafica em Swing e documentacao academica em `docs/`.
 
-Modelagem de um **sistema de despacho de ambulâncias do SAMU** como um **grafo dirigido e ponderado**. A cidade vira um grafo: hospitais, bases SAMU, bairros, cruzamentos e pacientes são **vértices**; ruas são **arestas** com peso dinâmico (tempo de deslocamento), que muda conforme o trânsito.
+## Objetivo
 
-O projeto é acadêmico e tem **4 entregas obrigatórias**:
-1. Backend em Java (grafo + algoritmos + regras de negócio)
-2. Interface gráfica em Swing
-3. Artigo em LaTeX
-4. Slides em Beamer
+O sistema busca apoiar uma simulacao de atendimento emergencial:
 
-**Objetivo didático:** aplicar teoria de grafos (Dijkstra, A*, BFS, Componentes Conexos) num problema do mundo real com regras de negócio de verdade.
+1. Carregar uma cidade ficticia com hospitais, bases, bairros, cruzamentos, vias e ambulancias.
+2. Registrar uma ocorrencia em um ponto da cidade.
+3. Encontrar a ambulancia disponivel mais proxima.
+4. Calcular a rota ate o paciente.
+5. Selecionar o hospital disponivel mais proximo.
+6. Exibir a rota no mapa e animar o deslocamento da ambulancia.
+7. Permitir alteracoes de trafego e capacidade hospitalar durante a simulacao.
 
----
+## Tecnologias
 
-## 2. Modelagem do domínio
+- Java 11
+- Swing para interface grafica
+- Ant/NetBeans como estrutura de projeto
+- Estrutura de pacotes separando dominio/algoritmos (`grafo`) e telas (`telas`)
 
-```
-Vertice (classe base)
- ├── Hospital     (capacidade, ocupação atual, disponibilidade)
- ├── Paciente     (nível de urgência, descrição da ocorrência)
- └── (Base SAMU, Bairro, Cruzamento — vértices genéricos sem subclasse própria)
+## Como Executar
 
-Aresta
- └── origem, destino, peso (minutos), status (LIVRE / CONGESTIONADA / BLOQUEADA)
-```
+### Pelo terminal
 
-- **`GrafoCidade`**: estrutura de dados central. Guarda vértices, arestas, e um **mapa de adjacência** (`Map<Integer, List<Aresta>>`) pra consultas rápidas de "quais ruas saem deste ponto".
-- **`Ambulancia`**: tem localização atual e status (`DISPONIVEL` / `EM_ATENDIMENTO`).
-- **`SistemaEmergencia`**: o orquestrador — é a classe que qualquer novo desenvolvedor vai mexer com mais frequência, porque é o ponto de entrada de todo o fluxo de negócio.
+No PowerShell, a partir da raiz do projeto:
 
-Terminologia do domínio é toda em português (`registrarOcorrencia`, `localizarAmbulanciaProxima`, etc.), reflexo direto dos requisitos funcionais (RF01–RF12) e regras de negócio (RN01–RN05) da especificação oficial.
-
----
-
-## 3. Os 4 algoritmos e pra que cada um serve
-
-| Algoritmo | Onde é usado | Por quê |
-|---|---|---|
-| **Dijkstra** | Rota ambulância → paciente | Menor custo/tempo real, considerando vias bloqueadas/congestionadas |
-| **A\*** | Rota paciente → hospital mais próximo | Mesma ideia do Dijkstra, mas guiado por heurística de distância euclidiana (mais eficiente quando o destino é conhecido) |
-| **BFS** | Análise estrutural da malha viária | Menor número de cruzamentos (não de tempo) — usado pra conectividade |
-| **Componentes Conexos** | Análise de cobertura (RF12) | Detecta bairros isolados sem acesso a hospital |
-
-Os quatro algoritmos vivem em classes próprias (`Dijkstra`, `AEstrela`, `BFS`, `ComponentesConexos`), cada uma com uma classe interna `Resultado` que carrega o caminho encontrado + custo/métrica.
-
----
-
-## 4. O fluxo de uma emergência, ponta a ponta
-
-Esse é o coração do sistema — o que acontece quando uma ocorrência é registrada:
-
-```
-1. registrarOcorrencia(paciente)
-       │
-       ├─ adiciona paciente como vértice no grafo
-       ├─ conecta paciente ao vértice mais próximo automaticamente
-       │  (conectarPacienteAoVerticeMaisProximo)
-       │
-       └─ dispara atenderNovaOcorrencia(paciente):
-              │
-              ├─ localizarAmbulanciaProxima()      → Dijkstra
-              ├─ calcularRotaAmbulanciaParaPaciente() → Dijkstra
-              └─ selecionarHospitalDestino()        → A*
+```powershell
+javac -encoding UTF-8 -d build\classes (Get-ChildItem -Recurse src -Filter *.java).FullName
+java -cp build\classes grafo.Main
 ```
 
-Tudo isso acontece **numa única chamada** a `registrarOcorrencia()`, que retorna um `AtendimentoResultado` com ambulância, rota e hospital já resolvidos. Essa é uma decisão de design importante: a regra de negócio **RN05** ("toda nova ocorrência deve gerar uma nova análise de rota") é garantida **pela própria estrutura do código**, não por convenção de quem chama o sistema.
+### Pelo NetBeans
 
-Depois disso, o fluxo segue com:
-- `despacharAmbulancia()` — muda status pra `EM_ATENDIMENTO`
-- `atualizarStatusVia()` / `GerenciadorVias` — bloqueios e congestionamentos em tempo real
-- `RecalculoRota` — detecta se um bloqueio afeta a rota em curso e recalcula automaticamente
-- `finalizarAtendimento()` — libera a ambulância
+Abra o projeto no NetBeans e execute a classe `grafo.Main`.
 
----
+Observacao: o arquivo `nbproject/project.properties` pode estar apontando `main.class=ambulancia.Main`. Caso use o botao "Run Project", ajuste para:
 
-## 5. Regras de negócio (RN01–RN05)
+```properties
+main.class=grafo.Main
+```
 
-| Regra | O que garante |
+## Como Usar a Simulacao
+
+Ao iniciar a aplicacao, a tela principal mostra um mapa vazio. Clique em `Iniciar` para carregar os dados demonstrativos.
+
+Depois disso, e possivel:
+
+- Criar uma nova ocorrencia pelo botao `Ocorrencia`.
+- Selecionar o local da ocorrencia, nivel de urgencia e descricao.
+- Visualizar a previsao de chegada da ambulancia antes do despacho.
+- Despachar a ambulancia e acompanhar a rota destacada no mapa.
+- Cadastrar novos hospitais.
+- Cadastrar novas vias entre pontos existentes.
+- Clicar em uma via para alterar seu status: livre, congestionada ou bloqueada.
+- Clicar em um hospital para alterar capacidade, ocupacao ou ver detalhes.
+- Usar zoom e arrastar o mapa para navegar pela malha viaria.
+
+## Modelagem do Grafo
+
+O nucleo da aplicacao fica no pacote `grafo`.
+
+| Classe | Responsabilidade |
 |---|---|
-| RN01 | Ambulância só pode atender uma ocorrência por vez |
-| RN02 | Hospitais lotados são ignorados na seleção de destino |
-| RN03 | Vias bloqueadas disparam recálculo automático de rota |
-| RN04 | Vias congestionadas têm peso aumentado (multiplicador 1.5x) |
-| RN05 | Toda ocorrência nova gera análise de rota completa (garantida por construção, ver seção 4) |
+| `GrafoCidade` | Armazena vertices, arestas e listas de adjacencia. |
+| `Vertice` | Representa um ponto da cidade com id, nome, tipo, latitude e longitude. |
+| `Aresta` | Representa uma via entre dois vertices, com peso, status e nome. |
+| `Hospital` | Vertice especializado com capacidade maxima e ocupacao atual. |
+| `Paciente` | Vertice especializado com nivel de urgencia e descricao da ocorrencia. |
+| `Ambulancia` | Guarda localizacao atual, status e posicao visual para animacao. |
+| `SistemaEmergencia` | Orquestra cadastros, ocorrencias, despacho, rotas e cobertura. |
 
----
+Tipos de vertices:
 
-## 6. Decisões de design que valem explicar na apresentação
+- `HOSPITAL`
+- `BASE_SAMU`
+- `BAIRRO`
+- `CRUZAMENTO`
+- `PACIENTE`
 
-- **`equals()` por `id`, usando `instanceof`** em vez de `getClass()`: permite que `Hospital` e `Paciente` (subclasses de `Vertice`) sejam corretamente comparados/localizados em `HashMap`/`HashSet` junto com vértices genéricos.
-- **Bloqueio de via = peso infinito, não remoção de aresta**: mantém a topologia do grafo intacta e permite reverter o bloqueio instantaneamente, sem reconstruir a aresta. Diverge da spec original (que sugere remoção), mas é uma escolha tecnicamente equivalente em complexidade.
-- **Dijkstra/A\* usam a lista de adjacência do grafo** (`getArestasSaida(vertice)`), não uma varredura de todas as arestas — isso é o que garante a complexidade O(E log V) exigida pela RNF04 (desempenho em redes urbanas de grande porte), em vez de O(V×E).
-- **Conexão do paciente ao grafo é automática e por proximidade real** (`calcularDistancia()`), não hardcoded — importante porque a futura GUI vai permitir clicar em qualquer ponto do mapa, e o paciente pode aparecer em qualquer lugar.
+Status das vias:
 
----
+- `LIVRE`: peso normal.
+- `CONGESTIONADA`: peso efetivo multiplicado por 1.5.
+- `BLOQUEADA`: peso efetivo infinito, impedindo passagem pelos algoritmos.
 
-## 7. Estado atual do projeto
+## Algoritmos Implementados
 
-✅ **Completo e testado:**
-- Modelagem do grafo (vértices, arestas, adjacência)
-- Os 4 algoritmos, com complexidade corrigida
-- Regras de negócio RN01–RN05
-- Fluxo de ponta a ponta rodando via `Main.java`
+| Algoritmo | Classe | Uso no sistema |
+|---|---|---|
+| Dijkstra | `Dijkstra` | Calcula o menor caminho por tempo entre ambulancia, paciente e outros destinos. |
+| A* | `AEstrela` | Seleciona o hospital disponivel mais proximo do paciente usando heuristica por distancia. |
+| BFS | `BFS` | Encontra caminho com menor numero de arestas, util para analise estrutural. |
+| Componentes Conexos | `ComponentesConexos` | Detecta regioes conectadas e componentes sem hospital disponivel. |
 
-🔴 **Ainda faltando (por ordem de prioridade sugerida):**
-1. **Interface gráfica Swing** — maior bloco de trabalho pendente. 4 telas: `TelaPrincipal`, `TelaCadastroHospital`, `TelaCadastroVia`, `TelaAtendimento`
-2. **Classe `AnaliseCobertura` dedicada** — hoje é só um método dentro de `SistemaEmergencia`; falta também o cálculo de distância média entre bairros e hospitais
-3. **Testes automatizados (JUnit)** — hoje a única "cobertura de teste" é o `Main.java` rodando manualmente
-4. **Artigo LaTeX + Slides Beamer** — documentação acadêmica
+Os algoritmos usam a lista de adjacencia do `GrafoCidade`, evitando percorrer todas as arestas a cada passo. Isso deixa as buscas mais adequadas para redes urbanas maiores.
 
----
+## Fluxo de Atendimento
 
-## 8. Stack e ambiente de desenvolvimento
+O fluxo principal fica em `SistemaEmergencia.registrarOcorrencia`.
 
-- **Linguagem:** Java
-- **GUI (a fazer):** Swing
-- **Build:** Ant (estrutura compatível com NetBeans, `nbproject/` + `build.xml`)
-- **IDEs:** VS Code pra lógica de backend, NetBeans pra interface Swing
-- **⚠️ Atenção pra quem for compilar no Windows:** o projeto usa acentuação (português) nos textos. Sempre compilar com `-encoding UTF-8` e rodar `chcp 65001` no terminal antes de executar, ou os acentos saem corrompidos (`nÃ£o`, `Ã¡` etc.) — isso é só exibição no console, não afeta o funcionamento.
+```text
+registrarOcorrencia(paciente)
+  adiciona o paciente ao grafo
+  conecta o paciente ao vertice mais proximo
+  localiza a ambulancia disponivel mais proxima com Dijkstra
+  calcula a rota da ambulancia ate o paciente
+  seleciona o hospital disponivel mais proximo com A*
+  retorna AtendimentoResultado
+```
 
----
+Na interface, `TelaAtendimento` usa esse resultado para:
 
+- mostrar mensagens de erro quando nao ha rota, ambulancia ou hospital;
+- destacar a rota completa no mapa;
+- animar a ambulancia ate o paciente e depois ate o hospital;
+- atualizar a ocupacao do hospital;
+- retornar a ambulancia para a base ao fim do atendimento.
 
+## Interface Grafica
+
+O pacote `telas` contem a interface Swing.
+
+| Classe | Funcao |
+|---|---|
+| `TelaPrincipal` | Janela principal, botoes de acao, log da simulacao e integracao com o mapa. |
+| `PainelMapa` | Desenha a malha viaria, hospitais, bases, ambulancias, pacientes, legenda, zoom e pan. |
+| `TelaAtendimento` | Dialogo para registrar ocorrencias e despachar ambulancias. |
+| `TelaCadastroHospital` | Cadastro de novos hospitais. |
+| `TelaCadastroVia` | Cadastro de novas ruas ou avenidas entre vertices. |
+
+O mapa representa visualmente:
+
+- vias livres, congestionadas e bloqueadas;
+- hospitais e bases SAMU;
+- ambulancias disponiveis ou em atendimento;
+- paciente no local da ocorrencia;
+- rota atual em destaque.
+
+## Dados de Demonstracao
+
+A classe `SeedDados` popula automaticamente a simulacao quando o usuario clica em `Iniciar`.
+
+Ela cria:
+
+- 3 hospitais;
+- 4 bases SAMU;
+- 8 bairros;
+- 6 cruzamentos;
+- vias bidirecionais entre os pontos;
+- 4 ambulancias posicionadas nas bases.
+
+Esses dados permitem testar o sistema sem cadastro manual inicial.
+
+## Regras de Negocio
+
+- Uma ambulancia so atende uma ocorrencia por vez.
+- Hospitais lotados sao ignorados na escolha do destino.
+- Vias bloqueadas nao podem ser usadas nas rotas.
+- Vias congestionadas aumentam o tempo de deslocamento.
+- Toda nova ocorrencia dispara uma analise completa de rota.
+- Pacientes sao conectados automaticamente ao ponto mais proximo da malha.
+
+## Estrutura do Projeto
+
+```text
+.
+├── src/
+│   ├── grafo/      # Dominio, grafo, algoritmos e regras de negocio
+│   └── telas/      # Interface grafica Swing
+├── docs/
+│   ├── artigo/     # Artigo em LaTeX/PDF
+│   ├── slides/     # Material de apresentacao
+│   └── *.pdf       # Documentos de apoio
+├── nbproject/      # Configuracao do NetBeans/Ant
+├── build.xml       # Build Ant
+└── README.md
+```
+
+## Principais Arquivos
+
+- `src/grafo/Main.java`: ponto de entrada da aplicacao.
+- `src/grafo/SistemaEmergencia.java`: servico central da simulacao.
+- `src/grafo/GrafoCidade.java`: estrutura do grafo.
+- `src/grafo/Dijkstra.java`: menor caminho por custo.
+- `src/grafo/AEstrela.java`: busca A* para hospital mais proximo.
+- `src/grafo/SeedDados.java`: dados iniciais da cidade.
+- `src/telas/TelaPrincipal.java`: janela principal.
+- `src/telas/PainelMapa.java`: renderizacao e interacao com o mapa.
+
+## Documentacao Academica
+
+A pasta `docs/` contem materiais complementares do trabalho:
+
+- artigo em LaTeX e PDF em `docs/artigo/`;
+- arquivos de slides em `docs/slides/`;
+- documentos de requisitos e apoio.
+
+## Observacoes
+
+O projeto usa textos em portugues e caracteres acentuados. Ao compilar pelo terminal, use `-encoding UTF-8` para evitar problemas de exibicao.
+
+Em Windows, se os acentos aparecerem corrompidos no console, execute antes:
+
+```powershell
+chcp 65001
+```
